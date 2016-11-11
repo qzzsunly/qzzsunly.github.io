@@ -1,0 +1,162 @@
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <title>73.&nbsp;Data Access</title><link rel="stylesheet" type="text/css" href="css/manual-multipage.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><link rel="home" href="index.html" title="Spring Boot Reference Guide"><link rel="up" href="howto.html" title="Part&nbsp;IX.&nbsp;&#8216;How-to&#8217; guides"><link rel="prev" href="howto-logging.html" title="72.&nbsp;Logging"><link rel="next" href="howto-database-initialization.html" title="74.&nbsp;Database initialization"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">73.&nbsp;Data Access</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="howto-logging.html">Prev</a>&nbsp;</td><th width="60%" align="center">Part&nbsp;IX.&nbsp;&#8216;How-to&#8217; guides</th><td width="20%" align="right">&nbsp;<a accesskey="n" href="howto-database-initialization.html">Next</a></td></tr></table><hr></div><div class="chapter"><div class="titlepage"><div><div><h2 class="title"><a name="howto-data-access" href="#howto-data-access"></a>73.&nbsp;Data Access</h2></div></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-configure-a-datasource" href="#howto-configure-a-datasource"></a>73.1&nbsp;Configure a DataSource</h2></div></div></div><p>To override the default settings just define a <code class="literal">@Bean</code> of your own of type <code class="literal">DataSource</code>.
+As explained in
+<a class="xref" href="boot-features-external-config.html#boot-features-external-config-3rd-party-configuration" title="24.7.1&nbsp;Third-party configuration">Section&nbsp;24.7.1, &#8220;Third-party configuration&#8221;</a> you
+can easily bind it to a set of <code class="literal">Environment</code> properties:</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@Bean</span></em>
+<em><span class="hl-annotation" style="color: gray">@ConfigurationProperties(prefix="datasource.fancy")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> DataSource dataSource() {
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> FancyDataSource();
+}</pre><pre class="programlisting"><span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">datasource.fancy.jdbcUrl</span>=jdbc:h2:mem:mydb
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">datasource.fancy.username</span>=sa
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">datasource.fancy.poolSize</span>=30</pre><p>Spring Boot also provides a utility builder class <code class="literal">DataSourceBuilder</code> that can be used
+to create one of the standard data sources (if it is on the classpath), or you can just
+create your own. If you want to reuse the customizations of <code class="literal">DataSourceProperties</code>, you
+can easily initialize a <code class="literal">DataSourceBuilder</code> from it:</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@Bean</span></em>
+<em><span class="hl-annotation" style="color: gray">@ConfigurationProperties(prefix="datasource.mine")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> DataSource dataSource(DataSourceProperties properties) {
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> properties.initializeDataSourceBuilder()
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-comment">// additional customizations</span>
+            .build();
+}</pre><pre class="programlisting"><span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">spring.datasource.url</span>=jdbc:h2:mem:mydb
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">spring.datasource.username</span>=sa
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">datasource.mine.poolSize</span>=30</pre><p>In this scenario, you keep the standard properties exposed by Spring Boot with your
+custom <code class="literal">DataSource</code> arrangement. By adding <code class="literal">@ConfigurationProperties</code>, you can also
+expose additional implementation-specific settings in a dedicated namespace.</p><p>See <span class="emphasis"><em><a class="xref" href="boot-features-sql.html#boot-features-configure-datasource" title="29.1&nbsp;Configure a DataSource">Section&nbsp;29.1, &#8220;Configure a DataSource&#8221;</a></em></span> in the
+&#8216;Spring Boot features&#8217; section and the
+<a class="link" href="https://github.com/spring-projects/spring-boot/tree/master/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/jdbc/DataSourceAutoConfiguration.java" target="_top"><code class="literal">DataSourceAutoConfiguration</code></a>
+class for more details.</p><div class="tip" style="margin-left: 0.5in; margin-right: 0.5in;"><table border="0" summary="Tip"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="images/tip.png"></td><th align="left">Tip</th></tr><tr><td align="left" valign="top"><p>You could also do that if you want to configure a JNDI data-source.</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@Bean(destroyMethod="")</span></em>
+<em><span class="hl-annotation" style="color: gray">@ConfigurationProperties(prefix="datasource.mine")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> DataSource dataSource() <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">throws</span> Exception {
+    JndiDataSourceLookup dataSourceLookup = <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> JndiDataSourceLookup();
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> dataSourceLookup.getDataSource(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"java:comp/env/jdbc/YourDS"</span>);
+}</pre></td></tr></table></div></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-two-datasources" href="#howto-two-datasources"></a>73.2&nbsp;Configure Two DataSources</h2></div></div></div><p>Creating more than one data source works the same as creating the first one. You might
+want to mark one of them as <code class="literal">@Primary</code> if you are using the default auto-configuration for
+JDBC or JPA (then that one will be picked up by any <code class="literal">@Autowired</code> injections).</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@Bean</span></em>
+<em><span class="hl-annotation" style="color: gray">@Primary</span></em>
+<em><span class="hl-annotation" style="color: gray">@ConfigurationProperties(prefix="datasource.primary")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> DataSource primaryDataSource() {
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> DataSourceBuilder.create().build();
+}
+
+<em><span class="hl-annotation" style="color: gray">@Bean</span></em>
+<em><span class="hl-annotation" style="color: gray">@ConfigurationProperties(prefix="datasource.secondary")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> DataSource secondaryDataSource() {
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> DataSourceBuilder.create().build();
+}</pre></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-use-spring-data-repositories" href="#howto-use-spring-data-repositories"></a>73.3&nbsp;Use Spring Data repositories</h2></div></div></div><p>Spring Data can create implementations for you of <code class="literal">@Repository</code> interfaces of various
+flavors. Spring Boot will handle all of that for you as long as those <code class="literal">@Repositories</code>
+are included in the same package (or a sub-package) of your <code class="literal">@EnableAutoConfiguration</code>
+class.</p><p>For many applications all you will need is to put the right Spring Data dependencies on
+your classpath (there is a <code class="literal">spring-boot-starter-data-jpa</code> for JPA and a
+<code class="literal">spring-boot-starter-data-mongodb</code> for Mongodb), create some repository interfaces to handle your
+<code class="literal">@Entity</code> objects. Examples are in the <a class="link" href="https://github.com/spring-projects/spring-boot/tree/master/spring-boot-samples/spring-boot-sample-data-jpa" target="_top">JPA sample</a>
+or the <a class="link" href="https://github.com/spring-projects/spring-boot/tree/master/spring-boot-samples/spring-boot-sample-data-mongodb" target="_top">Mongodb sample</a>.</p><p>Spring Boot tries to guess the location of your <code class="literal">@Repository</code> definitions, based on the
+<code class="literal">@EnableAutoConfiguration</code> it finds. To get more control, use the <code class="literal">@EnableJpaRepositories</code>
+annotation (from Spring Data JPA).</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-separate-entity-definitions-from-spring-configuration" href="#howto-separate-entity-definitions-from-spring-configuration"></a>73.4&nbsp;Separate @Entity definitions from Spring configuration</h2></div></div></div><p>Spring Boot tries to guess the location of your <code class="literal">@Entity</code> definitions, based on the
+<code class="literal">@EnableAutoConfiguration</code> it finds. To get more control, you can use the <code class="literal">@EntityScan</code>
+annotation, e.g.</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@Configuration</span></em>
+<em><span class="hl-annotation" style="color: gray">@EnableAutoConfiguration</span></em>
+<em><span class="hl-annotation" style="color: gray">@EntityScan(basePackageClasses=City.class)</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> Application {
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-comment">//...</span>
+
+}</pre></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-configure-jpa-properties" href="#howto-configure-jpa-properties"></a>73.5&nbsp;Configure JPA properties</h2></div></div></div><p>Spring Data JPA already provides some vendor-independent configuration options (e.g.
+for SQL logging) and Spring Boot exposes those, and a few more for hibernate as external
+configuration properties. The most common options to set are:</p><pre class="screen">spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.hibernate.naming.physical-strategy=com.example.MyPhysicalNamingStrategy
+spring.jpa.database=H2
+spring.jpa.show-sql=true</pre><p>The <code class="literal">ddl-auto</code> setting is a special case in that it has different defaults depending on
+whether you are using an embedded database (<code class="literal">create-drop</code>) or not (<code class="literal">none</code>). In addition
+all properties in <code class="literal">spring.jpa.properties.*</code> are passed through as normal JPA properties
+(with the prefix stripped) when the local <code class="literal">EntityManagerFactory</code> is created.</p><p>Spring Boot provides a consistent naming strategy regardless of the Hibernate generation
+that you are using. If you are using Hibernate 4, you can customize it using
+<code class="literal">spring.jpa.hibernate.naming.strategy</code>; Hibernate 5 defines a <code class="literal">Physical</code> and <code class="literal">Implicit</code>
+naming strategies: Spring Boot configures <code class="literal">SpringPhysicalNamingStrategy</code> by default. This
+implementation provides the same table structure as Hibernate 4. If you&#8217;d rather use
+Hibernate 5&#8217;s default instead, set the following property:</p><pre class="screen">spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl</pre><p>See <a class="link" href="https://github.com/spring-projects/spring-boot/tree/master/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaAutoConfiguration.java" target="_top"><code class="literal">HibernateJpaAutoConfiguration</code></a>
+and <a class="link" href="https://github.com/spring-projects/spring-boot/tree/master/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/orm/jpa/JpaBaseConfiguration.java" target="_top"><code class="literal">JpaBaseConfiguration</code></a>
+for more details.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-use-custom-entity-manager" href="#howto-use-custom-entity-manager"></a>73.6&nbsp;Use a custom EntityManagerFactory</h2></div></div></div><p>To take full control of the configuration of the <code class="literal">EntityManagerFactory</code>, you need to add
+a <code class="literal">@Bean</code> named &#8216;entityManagerFactory&#8217;. Spring Boot auto-configuration switches off its
+entity manager based on the presence of a bean of that type.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-use-two-entity-managers" href="#howto-use-two-entity-managers"></a>73.7&nbsp;Use Two EntityManagers</h2></div></div></div><p>Even if the default <code class="literal">EntityManagerFactory</code> works fine, you will need to define a new one
+because otherwise the presence of the second bean of that type will switch off the
+default. To make it easy to do that you can use the convenient <code class="literal">EntityManagerBuilder</code>
+provided by Spring Boot, or if you prefer you can just use the
+<code class="literal">LocalContainerEntityManagerFactoryBean</code> directly from Spring ORM.</p><p>Example:</p><pre class="programlisting"><span xmlns:d="http://docbook.org/ns/docbook" class="hl-comment">// add two data sources configured as above</span>
+
+<em><span class="hl-annotation" style="color: gray">@Bean</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> LocalContainerEntityManagerFactoryBean customerEntityManagerFactory(
+        EntityManagerFactoryBuilder builder) {
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> builder
+            .dataSource(customerDataSource())
+            .packages(Customer.<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span>)
+            .persistenceUnit(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"customers"</span>)
+            .build();
+}
+
+<em><span class="hl-annotation" style="color: gray">@Bean</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> LocalContainerEntityManagerFactoryBean orderEntityManagerFactory(
+        EntityManagerFactoryBuilder builder) {
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> builder
+            .dataSource(orderDataSource())
+            .packages(Order.<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span>)
+            .persistenceUnit(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"orders"</span>)
+            .build();
+}</pre><p>The configuration above almost works on its own. To complete the picture you need to
+configure <code class="literal">TransactionManagers</code> for the two <code class="literal">EntityManagers</code> as well. One of them could
+be picked up by the default <code class="literal">JpaTransactionManager</code> in Spring Boot if you mark it as
+<code class="literal">@Primary</code>. The other would have to be explicitly injected into a new instance. Or you
+might be able to use a JTA transaction manager spanning both.</p><p>If you are using Spring Data, you need to configure <code class="literal">@EnableJpaRepositories</code> accordingly:</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@Configuration</span></em>
+<em><span class="hl-annotation" style="color: gray">@EnableJpaRepositories(basePackageClasses = Customer.class,
+        entityManagerFactoryRef = "customerEntityManagerFactory")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> CustomerConfiguration {
+    ...
+}
+
+<em><span class="hl-annotation" style="color: gray">@Configuration</span></em>
+<em><span class="hl-annotation" style="color: gray">@EnableJpaRepositories(basePackageClasses = Order.class,
+        entityManagerFactoryRef = "orderEntityManagerFactory")</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> OrderConfiguration {
+    ...
+}</pre></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-use-traditional-persistence-xml" href="#howto-use-traditional-persistence-xml"></a>73.8&nbsp;Use a traditional persistence.xml</h2></div></div></div><p>Spring doesn&#8217;t require the use of XML to configure the JPA provider, and Spring Boot
+assumes you want to take advantage of that feature. If you prefer to use <code class="literal">persistence.xml</code>
+then you need to define your own <code class="literal">@Bean</code> of type <code class="literal">LocalEntityManagerFactoryBean</code> (with
+id &#8216;entityManagerFactory&#8217;, and set the persistence unit name there.</p><p>See
+<a class="link" href="https://github.com/spring-projects/spring-boot/blob/master/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/orm/jpa/JpaBaseConfiguration.java" target="_top"><code class="literal">JpaBaseConfiguration</code></a>
+for the default settings.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-use-spring-data-jpa--and-mongo-repositories" href="#howto-use-spring-data-jpa--and-mongo-repositories"></a>73.9&nbsp;Use Spring Data JPA and Mongo repositories</h2></div></div></div><p>Spring Data JPA and Spring Data Mongo can both create <code class="literal">Repository</code> implementations for you
+automatically. If they are both present on the classpath, you might have to do some extra
+configuration to tell Spring Boot which one (or both) you want to create repositories for
+you. The most explicit way to do that is to use the standard Spring Data
+<code class="literal">@Enable*Repositories</code> and tell it the location of your <code class="literal">Repository</code> interfaces
+(where &#8216;*&#8217; is &#8216;Jpa&#8217; or &#8216;Mongo&#8217; or both).</p><p>There are also flags <code class="literal">spring.data.*.repositories.enabled</code> that you can use to switch the
+auto-configured repositories on and off in external configuration.  This is useful for
+instance in case you want to switch off the Mongo repositories and still use the
+auto-configured <code class="literal">MongoTemplate</code>.</p><p>The same obstacle and the same features exist for other auto-configured Spring Data
+repository types (Elasticsearch, Solr). Just change the names of the annotations and flags
+respectively.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-use-exposing-spring-data-repositories-rest-endpoint" href="#howto-use-exposing-spring-data-repositories-rest-endpoint"></a>73.10&nbsp;Expose Spring Data repositories as REST endpoint</h2></div></div></div><p>Spring Data REST can expose the <code class="literal">Repository</code> implementations as REST endpoints for you as
+long as Spring MVC has been enabled for the application.</p><p>Spring Boot exposes as set of useful properties from the <code class="literal">spring.data.rest</code> namespace that
+customize the
+<a class="link" href="http://docs.spring.io/spring-data/rest/docs/current/api/org/springframework/data/rest/core/config/RepositoryRestConfiguration.html" target="_top"><code class="literal">RepositoryRestConfiguration</code></a>.
+If you need to provide additional customization, you should use a
+<a class="link" href="http://docs.spring.io/spring-data/rest/docs/current/api/org/springframework/data/rest/webmvc/config/RepositoryRestConfigurer.html" target="_top"><code class="literal">RepositoryRestConfigurer</code></a>
+bean.</p></div><div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="howto-configure-a-component-that-is-used-by-JPA" href="#howto-configure-a-component-that-is-used-by-JPA"></a>73.11&nbsp;Configure a component that is used by JPA</h2></div></div></div><p>If you want to configure a component that will be used by JPA then you need to ensure
+that the component is initialized before JPA. Where the component is auto-configured
+Spring Boot will take care of this for you. For example, when Flyway is auto-configured,
+Hibernate is configured to depend upon Flyway so that the latter has a chance to
+initialize the database before Hibernate tries to use it.</p><p>If you are configuring a component yourself, you can use an
+<code class="literal">EntityManagerFactoryDependsOnPostProcessor</code> subclass as a convenient way of setting up
+the necessary dependencies. For example, if you are using Hibernate Search with
+Elasticsearch as its index manager then any <code class="literal">EntityManagerFactory</code> beans must be
+configured to depend on the <code class="literal">elasticsearchClient</code> bean:</p><pre class="programlisting"><strong class="hl-tag" style="color: blue">/**
+ * {@link EntityManagerFactoryDependsOnPostProcessor} that ensures that
+ * {@link EntityManagerFactory} beans depend on the {@code elasticsearchClient} bean.
+ */</strong>
+<em><span class="hl-annotation" style="color: gray">@Configuration</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> ElasticsearchJpaDependencyConfiguration
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">extends</span> EntityManagerFactoryDependsOnPostProcessor {
+
+    ElasticsearchJpaDependencyConfiguration() {
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">super</span>(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"elasticsearchClient"</span>);
+    }
+
+}</pre></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="howto-logging.html">Prev</a>&nbsp;</td><td width="20%" align="center"><a accesskey="u" href="howto.html">Up</a></td><td width="40%" align="right">&nbsp;<a accesskey="n" href="howto-database-initialization.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">72.&nbsp;Logging&nbsp;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&nbsp;74.&nbsp;Database initialization</td></tr></table></div></body></html>
